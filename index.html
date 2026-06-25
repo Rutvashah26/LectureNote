@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LectureNote — Voice to Study Materials</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="static/css/styles.css" />
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="logo-mark">🎓</div>
+    LectureNote
+  </a>
+  <div class="nav-actions">
+    <button class="nav-btn nav-btn-ghost" onclick="showAbout()">How it works</button>
+    <button class="nav-btn nav-btn-primary" onclick="openNewLectureModal()">+ New Lecture</button>
+    <div id="authArea" class="auth-area"></div>
+  </div>
+</nav>
+
+<!-- LOGIN GATE (shown when the user is not signed in) -->
+<div class="login-gate" id="loginGate" style="display:none;">
+  <div class="login-gate-card">
+    <div class="login-gate-icon">🎓</div>
+    <div class="login-gate-title">Sign in to LectureNote</div>
+    <div class="login-gate-sub">Your lectures, transcripts, and generated study materials are saved to your account so you can come back to them anytime.</div>
+    <button class="google-login-btn google-login-btn-lg" onclick="loginWithGoogle()">
+      <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="" />
+      Sign in with Google
+    </button>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div class="app-shell" id="appShell" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <button class="sidebar-new-btn" onclick="openNewLectureModal()">
+      <span>＋</span> New Lecture
+    </button>
+    <div class="sidebar-section-title">Your Lectures</div>
+    <div class="lecture-list" id="lectureList">
+      <div style="padding:16px 8px;font-size:0.85rem;color:var(--ink-muted);">No lectures yet. Create your first one above.</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content" id="mainContent">
+    <div class="welcome-view" id="welcomeView">
+      <div class="welcome-icon">📝</div>
+      <h1 class="welcome-title">Turn lectures into<br><span>ready-to-study</span> notes</h1>
+      <p class="welcome-sub">Record, upload audio or video, or paste text. LectureNote transcribes it and instantly generates summaries, outlines, flashcards, and quizzes — everything you need to study smarter.</p>
+      <div class="feature-chips">
+        <div class="chip"><span class="chip-icon">📋</span> Summary Notes</div>
+        <div class="chip"><span class="chip-icon">🗂️</span> Study Outline</div>
+        <div class="chip"><span class="chip-icon">🃏</span> Flashcards</div>
+        <div class="chip"><span class="chip-icon">✅</span> Practice Quiz</div>
+        <div class="chip"><span class="chip-icon">🎙️</span> Voice Recording</div>
+        <div class="chip"><span class="chip-icon">🎬</span> Video Upload</div>
+      </div>
+      <button class="start-btn" onclick="openNewLectureModal()">Get started — it's free</button>
+    </div>
+    <div id="lectureViewContainer" style="display:none;"></div>
+  </main>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- NEW LECTURE MODAL -->
+<div class="modal-overlay" id="newLectureModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">New Lecture</h2>
+      <button class="modal-close" onclick="closeNewLectureModal()">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Lecture Title *</label>
+      <input class="form-input" type="text" id="lectureTitle" placeholder="e.g. Introduction to Quantum Mechanics" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Subject / Course</label>
+      <input class="form-input" type="text" id="lectureSubject" placeholder="e.g. Physics 301" />
+    </div>
+
+    <div class="input-tabs">
+      <button class="input-tab active" id="tabRecord" onclick="switchInputTab('record')">🎙️ Record</button>
+      <button class="input-tab" id="tabUpload" onclick="switchInputTab('upload')">📁 Upload Audio/Video</button>
+      <button class="input-tab" id="tabText" onclick="switchInputTab('text')">📝 Paste Text</button>
+    </div>
+
+    <!-- Record Tab -->
+    <div id="panelRecord">
+      <div class="mic-permission-banner" id="micBanner" style="display:none;"></div>
+      <div class="recorder-area" id="recorderArea">
+        <button class="record-btn" id="recordBtn" onclick="toggleRecording()">🎙️</button>
+        <div class="record-timer" id="recordTimer">00:00</div>
+        <div class="record-status" id="recordStatus">Tap to start recording your lecture</div>
+      </div>
+      <div id="recordingTranscriptPreview" style="margin-top:12px;display:none;">
+        <label class="form-label">Recorded Transcript (optional — leave blank to auto-transcribe with AI)</label>
+        <textarea class="form-textarea" id="recordingTranscriptText" placeholder="Leave blank to let Whisper AI transcribe your recording automatically, or type/edit the transcript here..."></textarea>
+      </div>
+    </div>
+
+    <!-- Upload Tab -->
+    <div id="panelUpload" style="display:none;">
+      <div class="upload-type-toggle">
+        <button class="upload-type-btn active" id="uploadTypeAudioBtn" onclick="setUploadSourceKind('audio')">🎵 Audio file</button>
+        <button class="upload-type-btn" id="uploadTypeVideoBtn" onclick="setUploadSourceKind('video')">🎬 Video file</button>
+      </div>
+      <div class="file-drop" id="fileDrop" onclick="document.getElementById('audioFileInput').click()"
+        ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)">
+        <div class="file-drop-icon">🎵</div>
+        <div class="file-drop-text"><strong>Click to upload</strong> or drag & drop<br>MP3, WAV, M4A, OGG — up to 200MB</div>
+      </div>
+      <input type="file" id="audioFileInput" accept=".mp3,.wav,.m4a,.ogg,.webm,.aac,.flac" style="display:none;" onchange="handleFileSelect(event)" />
+      <div id="fileSelectedInfo" style="display:none;" class="file-selected">
+        <span id="fileSelectedIcon">🎵</span>
+        <span class="file-selected-name" id="fileSelectedName"></span>
+        <button class="file-remove-btn" onclick="clearFile()">✕</button>
+      </div>
+      <div style="margin-top:16px;">
+        <label class="form-label">Paste Transcript (if you already have one)</label>
+        <textarea class="form-textarea" id="uploadTranscriptText" placeholder="Optionally paste the transcript here instead of uploading audio/video..."></textarea>
+      </div>
+    </div>
+
+    <!-- Text Tab -->
+    <div id="panelText" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Paste Lecture Text / Transcript *</label>
+        <textarea class="form-textarea" id="pasteText" placeholder="Paste your lecture notes, transcript, or text here..." style="min-height:160px;"></textarea>
+        <div class="form-hint">Minimum 20 characters. The more detail, the better your study materials.</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;margin-top:4px;">
+      <label class="form-label">Generate</label>
+      <div class="gen-options">
+        <label class="gen-option selected" data-type="summary"><input type="checkbox" checked /><span class="opt-icon">📋</span> Summary Notes</label>
+        <label class="gen-option selected" data-type="outline"><input type="checkbox" checked /><span class="opt-icon">🗂️</span> Outline</label>
+        <label class="gen-option selected" data-type="flashcards"><input type="checkbox" checked /><span class="opt-icon">🃏</span> Flashcards</label>
+        <label class="gen-option selected" data-type="quiz"><input type="checkbox" checked /><span class="opt-icon">✅</span> Quiz</label>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="submitLecture()">
+      <span id="submitBtnText">Generate Study Materials</span>
+    </button>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <div class="confirm-title">Delete this lecture?</div>
+    <div class="confirm-text">All notes, flashcards, and quiz questions for this lecture will be permanently deleted.</div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirmModal()">Cancel</button>
+      <button class="confirm-delete" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="static/js/app.js"></script>
+</body>
+</html>
