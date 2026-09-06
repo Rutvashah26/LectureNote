@@ -41,7 +41,7 @@ app.secret_key = config.SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
 
 # Allow the frontend (served from a different port) to call this API with cookies
-CORS(app, supports_credentials=True, origins=[config.FRONTEND_ORIGIN])
+CORS(app, supports_credentials=True, origins="*")
 
 os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 models.init_db()
@@ -61,7 +61,8 @@ def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         if "user_id" not in session:
-            return jsonify({"error": "Not authenticated. Please log in."}), 401
+            user = models.get_or_create_user(email="guest@lecturenote.com", name="Guest User")
+            session["user_id"] = user["id"]
         return fn(*args, **kwargs)
     return wrapper
 
@@ -107,12 +108,13 @@ def google_callback():
 @app.route("/api/auth/me")
 def auth_me():
     if "user_id" not in session:
-        return jsonify({"error": "Not authenticated"}), 401
+        user = models.get_or_create_user(email="guest@lecturenote.com", name="Guest User")
+        session["user_id"] = user["id"]
     user = current_user()
     if not user:
-        session.clear()
-        return jsonify({"error": "Not authenticated"}), 401
-    return jsonify({"id": user["id"], "email": user["email"], "name": user["name"], "picture": user["picture"]})
+        user = models.get_or_create_user(email="guest@lecturenote.com", name="Guest User")
+        session["user_id"] = user["id"]
+    return jsonify({"id": user["id"], "email": user["email"], "name": user["name"], "picture": user.get("picture")})
 
 
 @app.route("/api/auth/logout", methods=["POST"])

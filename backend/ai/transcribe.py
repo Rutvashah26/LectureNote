@@ -1,21 +1,21 @@
 """
 ai/transcribe.py
-Speech-to-text using OpenAI's Whisper API.
+Speech-to-text using Groq's Whisper API (whisper-large-v3).
 
 Handles both AUDIO and VIDEO input:
-  - Audio files are sent to Whisper directly.
-  - Video files have their audio track extracted with ffmpeg first
-    (Whisper's API only accepts audio/short video, and large video files
-    need to be shrunk to an audio-only stream anyway).
+  - Audio files are sent to Groq Whisper directly.
+  - Video files have their audio track extracted with ffmpeg first.
+
+Groq's Whisper API is free-tier supported and extremely fast.
 """
 
 import os
 import subprocess
 import uuid
-from openai import OpenAI
-from config import OPENAI_API_KEY, UPLOAD_FOLDER, ALLOWED_VIDEO_EXT
+from groq import Groq
+from config import GROQ_API_KEY, UPLOAD_FOLDER, ALLOWED_VIDEO_EXT
 
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 
 def _extract_audio_from_video(video_path: str) -> str:
@@ -37,12 +37,13 @@ def _extract_audio_from_video(video_path: str) -> str:
 
 def transcribe_file(filepath: str) -> str:
     """
-    Transcribes an audio OR video file and returns plain text.
+    Transcribes an audio OR video file using Groq Whisper and returns plain text.
     Raises RuntimeError with a clear message if anything goes wrong.
     """
     if client is None:
         raise RuntimeError(
-            "OPENAI_API_KEY is not set on the server. Add it to backend/.env to enable transcription."
+            "GROQ_API_KEY is not set on the server. Add it to backend/.env to enable transcription. "
+            "Get a free key at https://console.groq.com"
         )
 
     ext = filepath.rsplit(".", 1)[-1].lower()
@@ -55,13 +56,15 @@ def transcribe_file(filepath: str) -> str:
             temp_audio_created = True
 
         with open(audio_path, "rb") as f:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=f,
-                response_format="text"
+            transcription = client.audio.transcriptions.create(
+                file=(os.path.basename(audio_path), f.read()),
+                model="whisper-large-v3",
+                response_format="text",
+                language="en",
             )
-        # SDK returns either a string or an object depending on version
-        text = transcript if isinstance(transcript, str) else getattr(transcript, "text", str(transcript))
+
+        # Groq returns a string directly for response_format="text"
+        text = transcription if isinstance(transcription, str) else getattr(transcription, "text", str(transcription))
         return text.strip()
 
     except Exception as e:
