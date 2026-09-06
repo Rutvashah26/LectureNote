@@ -7,7 +7,6 @@
 const API_BASE = 'http://localhost:5000/api';
 
 // ─── STATE ───
-let currentUser = null;       // set after /auth/me succeeds
 let lectures = [];
 let activeLectureId = null;
 let activeLecture = null;
@@ -24,10 +23,11 @@ let quizAnswers = {};
 let quizRevealed = {};
 let deletePendingId = null;
 
-// ─── INIT ───
+// ─── INIT (no auth — open app, straight to homepage) ───
 document.addEventListener('DOMContentLoaded', () => {
   setupGenOptions();
-  checkAuth();
+  showApp();
+  loadLectures();
 });
 
 function setupGenOptions() {
@@ -36,99 +36,18 @@ function setupGenOptions() {
   });
 }
 
-// ════════════════════════════════════════════════════════
-// AUTH (Google OAuth via backend session cookie)
-// ════════════════════════════════════════════════════════
-
-async function checkAuth() {
-  try {
-    const user = await apiGet('/auth/me');
-    currentUser = user;
-    renderAuthUI();
-    showApp();
-    await loadLectures();
-  } catch (e) {
-    currentUser = null;
-    renderAuthUI();
-    showLoginGate();
-  }
-}
-
-function renderAuthUI() {
-  const area = document.getElementById('authArea');
-  if (!area) return;
-
-  if (currentUser) {
-    const initials = (currentUser.name || currentUser.email).slice(0, 1).toUpperCase();
-    area.innerHTML = `
-      <div class="user-menu">
-        <button class="user-chip" onclick="toggleUserDropdown()">
-          ${currentUser.picture
-            ? `<img src="${escHtml(currentUser.picture)}" alt="" />`
-            : `<span class="avatar-fallback">${initials}</span>`}
-          <span class="user-chip-name">${escHtml(currentUser.name || currentUser.email)}</span>
-        </button>
-        <div class="user-dropdown" id="userDropdown">
-          <div class="user-dropdown-email">${escHtml(currentUser.email)}</div>
-          <button class="user-dropdown-item danger" onclick="logout()">↪ Log out</button>
-        </div>
-      </div>
-    `;
-  } else {
-    area.innerHTML = `
-      <button class="google-login-btn" onclick="loginWithGoogle()">
-        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="" />
-        Sign in with Google
-      </button>
-    `;
-  }
-}
-
-function toggleUserDropdown() {
-  document.getElementById('userDropdown')?.classList.toggle('open');
-}
-
-document.addEventListener('click', (e) => {
-  const menu = document.querySelector('.user-menu');
-  if (menu && !menu.contains(e.target)) {
-    document.getElementById('userDropdown')?.classList.remove('open');
-  }
-});
-
-function loginWithGoogle() {
-  // Full page redirect to Flask, which redirects to Google, which redirects back.
-  window.location.href = API_BASE + '/auth/google/login';
-}
-
-async function logout() {
-  try {
-    await apiPost('/auth/logout', {});
-  } catch (e) { /* ignore */ }
-  currentUser = null;
-  lectures = [];
-  renderAuthUI();
-  showLoginGate();
-  showToast('Logged out.', 'success');
-}
-
 function showApp() {
-  document.getElementById('loginGate').style.display = 'none';
   document.getElementById('appShell').style.display = 'grid';
 }
 
-function showLoginGate() {
-  document.getElementById('appShell').style.display = 'none';
-  document.getElementById('loginGate').style.display = 'flex';
-}
-
 // ════════════════════════════════════════════════════════
-// API HELPERS  (credentials:'include' sends the session cookie)
+// API HELPERS (no auth — open backend)
 // ════════════════════════════════════════════════════════
 
 async function apiGet(path) {
   let r;
   try {
-    r = await fetch(API_BASE + path, { credentials: 'include' });
+    r = await fetch(API_BASE + path);
   } catch (networkErr) {
     throw new Error('Cannot reach the server. Is the Flask backend running on http://localhost:5000?');
   }
@@ -142,7 +61,6 @@ async function apiPost(path, body) {
     r = await fetch(API_BASE + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(body)
     });
   } catch (networkErr) {
@@ -155,7 +73,7 @@ async function apiPost(path, body) {
 async function apiPostForm(path, formData) {
   let r;
   try {
-    r = await fetch(API_BASE + path, { method: 'POST', credentials: 'include', body: formData });
+    r = await fetch(API_BASE + path, { method: 'POST', body: formData });
   } catch (networkErr) {
     throw new Error('Cannot reach the server. Is the Flask backend running on http://localhost:5000?');
   }
@@ -166,7 +84,7 @@ async function apiPostForm(path, formData) {
 async function apiDelete(path) {
   let r;
   try {
-    r = await fetch(API_BASE + path, { method: 'DELETE', credentials: 'include' });
+    r = await fetch(API_BASE + path, { method: 'DELETE' });
   } catch (networkErr) {
     throw new Error('Cannot reach the server. Is the Flask backend running on http://localhost:5000?');
   }
@@ -765,7 +683,7 @@ function downloadText(text, filename) {
 
 // ─── HOW IT WORKS ───
 function showAbout() {
-  showToast('Sign in → record, upload audio/video, or paste text → AI transcribes & generates notes, outlines, flashcards & quizzes.', 'info');
+  showToast('Record, upload audio/video, or paste text → AI transcribes & generates notes, outlines, flashcards & quizzes.', 'info');
 }
 
 // ─── UTILS ───

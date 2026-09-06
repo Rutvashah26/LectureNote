@@ -13,7 +13,7 @@ from config import GROQ_API_KEY
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "openai/gpt-oss-120b"
 
 
 def _require_client():

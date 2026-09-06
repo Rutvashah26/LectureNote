@@ -20,25 +20,11 @@
   <div class="nav-actions">
     <button class="nav-btn nav-btn-ghost" onclick="showAbout()">How it works</button>
     <button class="nav-btn nav-btn-primary" onclick="openNewLectureModal()">+ New Lecture</button>
-    <div id="authArea" class="auth-area"></div>
   </div>
 </nav>
 
-<!-- LOGIN GATE (shown when the user is not signed in) -->
-<div class="login-gate" id="loginGate" style="display:none;">
-  <div class="login-gate-card">
-    <div class="login-gate-icon">🎓</div>
-    <div class="login-gate-title">Sign in to LectureNote</div>
-    <div class="login-gate-sub">Your lectures, transcripts, and generated study materials are saved to your account so you can come back to them anytime.</div>
-    <button class="google-login-btn google-login-btn-lg" onclick="loginWithGoogle()">
-      <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="" />
-      Sign in with Google
-    </button>
-  </div>
-</div>
-
 <!-- APP SHELL -->
-<div class="app-shell" id="appShell" style="display:none;">
+<div class="app-shell" id="appShell">
 
   <!-- SIDEBAR -->
   <aside class="sidebar">

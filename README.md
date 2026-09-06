@@ -16,16 +16,16 @@ lecturenote/
 ├── index.html                 # Page markup only
 ├── static/
 │   ├── css/styles.css         # All styling
-│   └── js/app.js              # Frontend logic: auth, recording, upload, history, API calls
+│   └── js/app.js              # Frontend logic: recording, upload, history, API calls
 ├── backend/
-│   ├── app.py                 # Flask app: routes, Google OAuth, sessions
+│   ├── app.py                 # Flask app: routes (no auth, open local app)
 │   ├── models.py              # SQLite data layer (users, lectures, notes)
 │   ├── config.py              # Reads settings from .env
 │   ├── requirements.txt
 │   ├── .env.example           # Copy to .env and fill in your keys
 │   └── ai/
-│       ├── transcribe.py      # Speech-to-text (OpenAI Whisper) — handles audio AND video
-│       └── generate.py        # Generative AI (Anthropic Claude) — notes/outline/flashcards/quiz
+│       ├── transcribe.py      # Speech-to-text (Groq Whisper) — handles audio AND video
+│       └── generate.py        # Generative AI (Groq LLM) — notes/outline/flashcards/quiz
 └── README.md
 ```
 
@@ -38,10 +38,9 @@ lecturenote/
 | Frontend logic                  | Vanilla JavaScript (fetch API, MediaRecorder API) |
 | Backend server                  | Python 3 + Flask                                  |
 | Database                        | SQLite (file-based, zero setup)                   |
-| Authentication                  | Google OAuth 2.0 via Authlib                      |
-| Speech-to-text                  | OpenAI Whisper API                                |
+| Speech-to-text                  | Groq Whisper API                                  |
 | Video → audio extraction        | ffmpeg (CLI tool, called from Python)             |
-| Notes/quiz/flashcard generation | Anthropic Claude API                              |
+| Notes/quiz/flashcard generation | Groq LLM API                                      |
 
 ## Setup
 
@@ -66,9 +65,7 @@ cp .env.example .env
 Edit `backend/.env` and fill in:
 
 - `SECRET_KEY` — any random string
-- `ANTHROPIC_API_KEY` — from https://console.anthropic.com
-- `OPENAI_API_KEY` — from https://platform.openai.com (used for Whisper)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — see step 3 below
+- `GROQ_API_KEY` — from https://console.groq.com (LLM + Whisper)
 
 Run the server:
 
@@ -78,16 +75,7 @@ python app.py
 
 It starts on **http://localhost:5000**. Leave this running.
 
-### 3. Set up Google OAuth (for sign-in)
-
-1. Go to https://console.cloud.google.com/apis/credentials
-2. Create a project (or pick an existing one)
-3. Click **Create Credentials → OAuth client ID**
-4. Application type: **Web application**
-5. Add an **Authorized redirect URI**: `http://localhost:5000/api/auth/google/callback`
-6. Copy the generated **Client ID** and **Client Secret** into `backend/.env`
-
-### 4. Frontend
+### 3. Frontend
 
 The frontend is static files — no build step. Serve the project root with any
 simple HTTP server (opening `index.html` directly via `file://` will break
@@ -101,11 +89,11 @@ python -m http.server 8000
 Open **http://localhost:8000** in your browser.
 
 > Make sure `FRONTEND_ORIGIN=http://localhost:8000` in `backend/.env` matches
-> whatever port you serve the frontend on, or CORS/login will fail.
+> whatever port you serve the frontend on, or CORS will fail.
 
 ## Using the app
 
-1. Open the app — you'll be asked to **Sign in with Google**.
+1. Open the app — homepage loads directly, no sign-in.
 2. Click **+ New Lecture**.
 3. Choose an input method:
    - **Record** — clicking the mic button triggers the browser's microphone
@@ -115,11 +103,10 @@ Open **http://localhost:8000** in your browser.
      files have their audio extracted with ffmpeg server-side, then transcribed.
    - **Paste Text** — skip transcription entirely.
 4. Pick which study materials to generate (summary, outline, flashcards, quiz).
-5. Click **Generate Study Materials**. Claude generates the content; it's saved
-   to your account and appears in **Your Lectures** (history) in the sidebar.
-6. Click **Log out** from the user menu (top right) to end your session.
+5. Click **Generate Study Materials**. Groq generates the content; it's saved
+   and appears in **Your Lectures** (history) in the sidebar.
 
 ## Notes on costs
 
-Both the OpenAI Whisper API and the Anthropic Claude API are paid, metered APIs.
-Running this app will incur small per-request charges on your own API keys.
+Both Groq LLM and Whisper APIs have a free tier.
+Running this app uses your own `GROQ_API_KEY`.
